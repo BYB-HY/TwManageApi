@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const handleDB= require('../db/handleDB');
+const checkPermission = require('../utils/permission/checkPermission')
+const handleDB= 1;
 
 // 新增报销申请接口
-router.post('/reimbursements', async (req, res) => {
+router.post('/',checkPermission([23]), async (req, res) => {
     try {
       const tableName = 'reimbursements'; // 报销申请表名
       const methodName = 'insert'; // 插入操作方法名
@@ -20,7 +21,7 @@ router.post('/reimbursements', async (req, res) => {
   });
   
 // 查询报销申请列表接口
-router.get('/reimbursements', async (req, res) => {
+router.get('/',checkPermission([23]), async (req, res) => {
 try {
     const tableName = 'reimbursements'; // 报销申请表名
     const methodName = 'find'; // 查询操作方法名
@@ -36,7 +37,7 @@ try {
 });
 
 // 查询单个报销申请接口
-router.get('/reimbursements/:id', async (req, res) => {
+router.get('/:id',checkPermission([23]), async (req, res) => {
 try {
     const tableName = 'reimbursements'; // 报销申请表名
     const methodName = 'findOne'; // 查询单个记录操作方法名
@@ -53,7 +54,7 @@ try {
 });
 
 // 更新报销申请接口
-router.put('/reimbursements/:id', async (req, res) => {
+router.put('/:id',checkPermission([23]), async (req, res) => {
 try {
     const tableName = 'reimbursements'; // 报销申请表名
     const methodName = 'update'; // 更新操作方法名
@@ -71,7 +72,7 @@ try {
 });
 
 // 删除报销申请接口
-router.delete('/reimbursements/:id', async (req, res) => {
+router.delete('/:id',checkPermission([23]), async (req, res) => {
 try {
     const tableName = 'reimbursements'; // 报销申请表名
     const methodName = 'delete'; // 删除操作方法名

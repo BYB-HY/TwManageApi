@@ -1,26 +1,34 @@
 const express = require('express');
 const router = express.Router();
-const handleDB = require('../db/handleDB');
+const db = require('../models')
+const checkPermission = require('../utils/permission/checkPermission')
+const execute = db.menus;
 
-const tableName = 'menus';
-
-router.get('/menu', async (req, res) => {
-    try {
-        const methodName = 'find'; // 查询操作方法名
-        const result = await handleDB(res, tableName, methodName, 'menus数据查询失败');
-        // 将导航栏项组织为层级结构
-        const menuList = buildHierarchy(result);
-        res.status(200).json({
-            code:200,
-            success:true,
-            message:"请求成功",
-            data:menuList
-        });
-        // res.send(menuList)
-    } catch (error) {
-        console.error('错误:', error);
-        res.status(500).json({ error: errorMessage });
-    }
+router.get('/',checkPermission([21,23]), async (req, res) => {
+    // 将导航栏项组织为层级结构
+    const data = buildHierarchy(await execute.findAll());
+    res.status(200).json({
+        code:200,
+        success:true,
+        message:"请求成功",
+        data
+    });
+    // try {
+    //     const methodName = 'find'; // 查询操作方法名
+    //     const result = await handleDB(res, tableName, methodName, 'menus数据查询失败');
+    //     // 将导航栏项组织为层级结构
+    //     const menuList = buildHierarchy(result);
+    //     res.status(200).json({
+    //         code:200,
+    //         success:true,
+    //         message:"请求成功",
+    //         data:menuList
+    //     });
+    //     // res.send(menuList)
+    // } catch (error) {
+    //     console.error('错误:', error);
+    //     res.status(500).json({ error: errorMessage });
+    // }
 });
 
 // 构建导航栏项的层级结构的函数

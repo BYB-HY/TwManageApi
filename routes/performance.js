@@ -1,22 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const handleDB = require('../db/handleDB');
-
-const tableName_year = 'year_quarter';//年-季度
-const tableName_employee = 'employee';//绩效考核人员
-const tableName_summary = 'performance_summary';//全员年度汇总表
-const tableName_indicators = 'performance_indicators'//考核指标和各项占比信息
-const tableName_extra = 'performance_extra'//加减分项目信息
-const tableName_assessment = 'performance_assessment'//个人绩效考核
-const tableName_all = 'performance_all' //全员季度绩效考核统计表
+const checkPermission = require('../utils/permission/checkPermission')
+const db = require('../models');
+//年-季度,绩效考核人员,全员年度汇总表,考核指标和各项占比信息,加减分项目信息,个人绩效考核,全员季度绩效考核统计表
+const {year_quarter,employee,performance_summary,performance_indicators,performance_extra,performance_assessment,performance_all} = db;
 
 
 //获取绩效汇总接口
-router.get('/performance-summary/:year', async (req, res) => {
+router.get('/summary/:year',checkPermission([23]), async (req, res) => {
   //前端传年份（默认今年，前端处理）
   const { year = new Date().getFullYear() } = req.query;
   //查询季度表所有年份,并去重
-  const resultYear = await handleDB(res, tableName_year, 'find', 'reminders数据库查询出错',['year']);
+  const resultYear = await year_quarter.findAll({attributes: ['year']});
   const allYear = [...new Set(resultYear.map(obj => obj.year))];
   //如果没有这个年份
   if (allYear.filter(item => (item === year)).length == 0) {
@@ -25,19 +20,29 @@ router.get('/performance-summary/:year', async (req, res) => {
     // const vaule = `(${year},'第一季度'),(${year},'第二季度'),(${year},'第三季度'),(${year},'第四季度')`;
     // await handleDB(res, tableName_year, 'sql', 'reminders数据库查询出错', `INSERT INTO ${tableName_year} ${column} VALUES ${vaule}`);
     //拿考核人员管理表（值为在职,并且值是需要评绩效的）的id
-    const employeeId =  await handleDB(res, tableName_employee, 'sql', 'reminders数据库查询出错', `select employee_id from ${tableName_employee} where work_state = "在职" AND performance = 1`);
+    const employeeId = await employee.findAll({
+      attributes: ['employee_id'],
+      where: {
+        work_state: "在职",
+        performance : 1
+      }
+    });
     //在汇总表中创建
-    const value = employeeId.map(obj => `(${obj.employee_id},2023)`);
-    const column = '(employee_id,year)'
-    console.log(value)
-    // const value = 
-    await handleDB(res, tableName_summary, 'sql', 'reminders数据库查询出错', `INSERT INTO ${tableName_summary} ${column} VALUES ${value}`);
-    // await handleDB(res, tableName_summary, 'ensert', 'reminders数据库查询出错', [{employee_id, year}]);
+    const value = employeeId.map(obj => `{employee_id:${obj.employee_id},year:${year}}`);
+    await performance_summary.bulkCreate(value)
   }
   //用年份的变量获取到汇总表的对应数据
-  const result = await handleDB(res, tableName_summary, 'find', 'reminders数据库查询出错', `year=${year}`);
+  const result = await performance_summary.findAll({
+      where: {
+        year
+      }
+    });
   //获取4个季度id
-  const allQuarter = await handleDB(res, tableName_year, 'find', 'reminders数据库查询出错', `year=${year}`);
+  const allQuarter = await year_quarter.findAll({
+    where: {
+      year
+    }
+  });
   //最后返回所有年份和汇总表的数据
   res.send({
     code: 200,
@@ -46,38 +51,13 @@ router.get('/performance-summary/:year', async (req, res) => {
     data: [result , allYear, allQuarter],
   });
 });
-// app.get('/api/performance-summary', (req, res) => {
-//   const { year = new Date().getFullYear() } = req.query;
-//   const years = [...new Set(quarters.map(q => q.year))];
-
-//   if (!years.includes(parseInt(year))) {
-//     // 如果年份不存在，则创建对应年份的记录
-//     const newQuarters = [1, 2, 3, 4].map(q => {
-//       const newQuarter = { id: `q${q}id`, year: parseInt(year) };
-//       quarters.push(newQuarter);
-//       return newQuarter;
-//     });
-
-// 在考核人员管理表中创建与新季度记录相关的记录（假设值为在职）
-// perform the required operations
-// 获取对应年份的4个季度id
-//   const quarterIds = quarters.filter(q => q.year === parseInt(year)).map(q => q.id);
-
-//   // 根据季度id获取汇总表中的数据
-//   const summaryData = {};
-//   quarterIds.forEach(quarterId => {
-//     summaryData[quarterId] = performanceSummary[quarterId] || [];
-//   });
-
-//   res.json({ years, summary: summaryData });
-// });
 
 
 
 
 //获取员工绩效接口
 //前端传员工id和季度id
-router.get('/gerenjixio', async (res, req) => {
+router.get('/gerenjixio',checkPermission([23]), async (res, req) => {
   const { yuangonid, jiduid } = req.params;
   //在个人考核表和指标表中查对应的数据
   const result = await handleDB(res, tableName_assessment, 'find', 'reminders数据库查询出错', yuangonid, jiduid);
@@ -90,7 +70,7 @@ router.get('/gerenjixio', async (res, req) => {
 })
 
 //新填写个人绩效接口
-router.post('/gerenjixio', async (res, req) => {
+router.post('/gerenjixio',checkPermission([23]), async (res, req) => {
   //前端传员工id和季度id，添加的数据
   const { yuangonid, jiduid, jiduname, data } = req.params;
   const {project, indicators} = data;
@@ -111,7 +91,7 @@ router.post('/gerenjixio', async (res, req) => {
 
 
 //需要修改汇总和季度汇总的数据
-router.post('/gerenjixio1', async (res, req) => {
+router.post('/gerenjixio1',checkPermission([23]), async (res, req) => {
   //前端传员工id和季度id，添加的数据
   const { yuangonid, jiduid, jiduname, data } = req.params;
   const {project, indicators} = data;
@@ -181,7 +161,7 @@ router.post('/gerenjixio1', async (res, req) => {
 
 
 //获取季度绩效汇总接口
-router.get('/jidujixio', async (res, req) => {
+router.get('/jidujixio',checkPermission([23]), async (res, req) => {
   const { jiduid } = req.params;
   //在个人考核表和指标表中查对应的数据
   const result = await handleDB(res, tableName_all, 'find', 'reminders数据库查询出错', yuangonid, jiduid);
@@ -202,7 +182,7 @@ async function jiduid(a) {
 
 
 // 获取员工绩效列表接口
-router.get('/performance', async (req, res) => {
+router.get('/',checkPermission([23]), async (req, res) => {
   const tableName = 'performance'; // 绩效管理表名
   const methodName = 'find'; // 查询操作方法名
 
@@ -213,7 +193,7 @@ router.get('/performance', async (req, res) => {
 });
 
 // 获取单个员工绩效接口
-router.get('/performance/:id', async (req, res) => {
+router.get('/:id',checkPermission([23]), async (req, res) => {
   const tableName = 'performance'; // 绩效管理表名
   const methodName = 'findOne'; // 查询单个记录操作方法名
   const performanceId = req.params.id; // 获取绩效id
@@ -225,7 +205,7 @@ router.get('/performance/:id', async (req, res) => {
 });
 
 // 创建员工绩效接口
-router.post('/performance', async (req, res) => {
+router.post('/',checkPermission([23]), async (req, res) => {
   const tableName = 'performance'; // 绩效管理表名
   const methodName = 'insert'; // 插入操作方法名
   const newPerformanceData = req.body; // 获取请求中的新员工绩效数据
@@ -237,7 +217,7 @@ router.post('/performance', async (req, res) => {
 });
 
 // 更新员工绩效接口
-router.put('/performance/:id', async (req, res) => {
+router.put('/:id',checkPermission([23]), async (req, res) => {
   const tableName = 'performance'; // 绩效管理表名
   const methodName = 'update'; // 更新操作方法名
   const performanceId = req.params.id; // 获取要编辑的绩效id
@@ -250,7 +230,7 @@ router.put('/performance/:id', async (req, res) => {
 });
 
 // 删除员工绩效接口
-router.delete('/performance/:id', async (req, res) => {
+router.delete('/:id',checkPermission([23]), async (req, res) => {
   const tableName = 'performance'; // 绩效管理表名
   const methodName = 'delete'; // 删除操作方法名
   const performanceId = req.params.id; // 获取要删除的绩效id
@@ -264,7 +244,7 @@ router.delete('/performance/:id', async (req, res) => {
 
 
 // 获取员工绩效列表接口
-router.get('/performance', async (req, res) => {
+router.get('/',checkPermission([23]), async (req, res) => {
   const tableName = 'performance'; // 绩效管理表名
   const methodName = 'findAll'; // 查询所有记录操作方法名
 

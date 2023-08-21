@@ -4,14 +4,7 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cookieSession = require('cookie-session');
 const indexRouter = require('./routes/index');
-const passportRouter = require('./routes/passport');
-const employeeRouter = require('./routes/employee');
-const departmentsRouter = require('./routes/departments');
-const assetsRouter = require('./routes/assets');
-const performanceRouter = require('./routes/performance');
-const reimbursementsRouter = require('./routes/reimbursements');
-const remindersRouter = require('./routes/reminders');
-const menusRouter = require('./routes/menus');
+
 // let appConfig = (app) => {
 //     //cookie的注册
 //     app.use(cookieParser());
@@ -57,15 +50,6 @@ class AppConfig{
         
         //设置路由
         this.app.use(indexRouter);
-        this.app.use(passportRouter);
-        this.app.use(employeeRouter);
-        this.app.use(assetsRouter);
-        this.app.use(performanceRouter);
-        this.app.use(reimbursementsRouter);
-        this.app.use(departmentsRouter);
-        this.app.use(remindersRouter);
-        this.app.use(menusRouter);
-        
         //使用静态资源
         this.app.use(express.static(path.join(__dirname,'public')));
 

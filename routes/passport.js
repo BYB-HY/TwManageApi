@@ -1,7 +1,72 @@
-const express = require('express');
-const router = express.Router();
 const Captcha = require('../utils/captcha/index');
-const handleDB = require('../db/handleDB');
+
+// routes/auth.js
+const express = require('express');
+// 需要安装npm install jsonwebtoken bcrypt
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const router = express.Router();
+const db = require('../models')
+
+const User = db.user;
+
+router.post('/', async (req, res) => {
+  const { username, password } = req.body;
+    //   //生成hash加密字段
+    // bcrypt.hash(password, 10, async(err, hash) => {
+    //     if (err) {
+    //       console.error(err);
+    //       return res.status(500).json({ error: 'Internal Server Error' });
+    //     }
+    //     await User.update({ password:hash }, {
+    //         where: {
+    //             account: username
+    //         }
+    //       });
+    // })
+
+
+    //1、获取post请求参数(用户名和密码)，判空
+    if(!username || !password){
+        res.status(401).json({message:'缺少参数'})
+        return
+    }
+    // 查找用户
+    const user = await User.findOne({ where: { account: username } });
+    if (!user) {
+      return res.status(401).json({ message: '未找到用户' });
+    }
+    // 验证密码
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ message: '密码错误' });
+    }
+    
+    // 颁发 JWT
+    const token = jwt.sign({ userId: user.id }, 'secret', { expiresIn: '1h' });
+
+    res.json({
+        code: 200,
+        success: true,
+        message: "请求成功",
+        token,
+    })
+
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 router.get('/passport/get_code/:float', (req,res) => {
